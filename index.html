@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Una Nueva Vida – Tienda de segunda mano</title>
+  <meta name="description" content="Tienda de segunda mano. Compra y vende artículos usados con precios justos y enfoque ambiental." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- EmailJS (envío sin backend) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    :root{
+      --bg:#f6f1e6; --ink:#3b2e25; --muted:#7a6a5f; --brand:#cdb48f; --brand-dark:#9f8a6a;
+      --card:#fffaf1; --line:#e8decd; --ok:#2e7d32; --err:#b00020;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+    .container{width:min(1100px,92%);margin-inline:auto}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1rem;border-radius:12px;background:var(--brand);color:#2a231d;font-weight:700;border:1px solid var(--line);box-shadow:0 4px 20px rgba(205,180,143,.25);transition:.2s}
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.03)}
+    .btn.outline{background:transparent;color:var(--ink);border-color:var(--brand-dark)}
+    header{position:sticky;top:0;z-index:50;background:rgba(246,241,230,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    .nav{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0}
+    .logo{display:flex;align-items:center;gap:.6rem;font-weight:800}
+    .logo img{width:38px;height:38px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:white}
+    .menu{display:flex;gap:1rem}
+    .menu a{opacity:.95;padding:.5rem .75rem;border-radius:8px}
+    .menu a:hover{background:var(--card);border:1px solid var(--line)}
+    .hamb{display:none}
+    @media (max-width:900px){.menu{display:none}.hamb{display:block}}
+
+    .hero{padding:4rem 0 2rem;display:grid;grid-template-columns:1.2fr .8fr;gap:2rem;align-items:center}
+    .hero h1{font-size:clamp(32px,5vw,52px);line-height:1.05;margin:0 0 1rem}
+    .hero p{color:var(--muted);margin:0 0 1.5rem}
+    .pill{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--brand-dark);border-radius:999px;padding:.35rem .6rem;font-size:.875rem;color:var(--ink);background:#fff}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+    .hero .preview{padding:1rem}
+
+    section{padding:2.5rem 0}
+
+    .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.5rem 0 1rem}
+    input,textarea,select{width:100%;padding:.7rem;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+    input:focus,textarea:focus,select:focus{outline:2px solid var(--brand)}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+    @media (max-width:900px){.hero{grid-template-columns:1fr}.grid-3{grid-template-columns:1fr}}
+
+    .prod{padding:1rem;border-radius:16px;border:1px solid var(--line);background:#fff;display:flex;flex-direction:column}
+    .prod img{border-radius:12px;border:1px solid var(--line);aspect-ratio:4/3;object-fit:cover}
+    .price{font-size:1.1rem;font-weight:800}
+    .muted{color:var(--muted)}
+
+    .pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+    .price-card{padding:1.25rem;border-radius:16px;border:1px solid var(--line);background:#fff}
+    .badge{display:inline-block;padding:.25rem .5rem;border-radius:999px;border:1px solid var(--brand-dark);color:var(--ink);font-size:.8rem;background:#fff}
+
+    details.settings{margin-top:1rem}
+    .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media (max-width:900px){.admin-grid{grid-template-columns:1fr}}
+
+    .ok{color:var(--ok);font-weight:600}
+    .error{color:var(--err);font-weight:600}
+
+    footer{padding:2rem 0;border-top:1px solid var(--line);color:var(--muted)}
+
+    /* ===== Modal de login al iniciar ===== */
+    .modal{
+      position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.35);z-index:9999;padding:1rem;
+    }
+    .modal.open{display:flex}
+    .modal-card{
+      width:min(480px,95%);background:#fff;border:1px solid var(--line);border-radius:18px;
+      box-shadow:0 20px 60px rgba(0,0,0,.2);padding:1rem;
+    }
+    .modal-card h3{margin:.25rem 0 0}
+    .modal-actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.75rem}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="logo">
+        <img id="logoImg" alt="Logo Una Nueva Vida" />
+        <div id="storeName">Una Nueva Vida</div>
+      </div>
+      <nav class="menu" aria-label="Principal">
+        <a href="#productos">Productos</a>
+        <a href="#mision-vision">Misión y Visión</a>
+        <a href="#precios">Precios</a>
+        <a href="#carrito">Carrito (<span id="cartCount">0</span>)</a>
+        <a href="#contacto">Contacto</a>
+        <!-- Botón de cerrar sesión visible solo si eres admin -->
+        <button id="logoutBtn" class="btn outline" style="display:none">Cerrar sesión</button>
+      </nav>
+      <button class="hamb btn outline" id="hamb" aria-label="Abrir menú">Menú</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container">
+      <div>
+        <div class="pill">Economía circular • Segunda mano • Precios justos</div>
+        <h1>Da <em>Una Nueva Vida</em> a lo que vale</h1>
+        <p>Compra artículos usados en excelente estado, ahorra dinero y reduce residuos. Gestiona tus pedidos por correo con tus datos para coordinar entrega.</p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+          <a class="btn" href="#productos">Ver productos</a>
+          <a class="btn outline" href="#admin">Administrador</a>
+        </div>
+      </div>
+      <div class="card preview" aria-hidden="true">
+        <!-- Fallback automático si falla la imagen -->
+        <img id="heroImg"
+             src="https://ichef.bbci.co.uk/ace/ws/640/cpsprodpb/50DA/production/_101589602_3ec390bf-d940-4382-8235-0dafdc6f50f3.jpg.webp"
+             alt="Artículos de segunda mano"
+             referrerpolicy="no-referrer"
+             onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1515169067865-5387ec356754?auto=format&fit=crop&w=1280&q=80';" />
+      </div>
+    </section>
+
+    <section id="productos">
+      <div class="container">
+        <h2>Productos</h2>
+        <p class="muted">Vende y compra artículos usados en buen estado. Precios en soles (S/).</p>
+        <div class="toolbar">
+          <input id="q" placeholder="Buscar por nombre o categoría" style="flex:1;min-width:220px" />
+          <select id="filterCat" style="width:200px"><option value="">Todas las categorías</option></select>
+          <select id="filterCond" style="width:200px">
+            <option value="">Cualquier condición</option>
+            <option>Como nuevo</option>
+            <option>Muy bueno</option>
+            <option>Bueno</option>
+          </select>
+        </div>
+        <div id="productGrid" class="grid-3" style="margin-top:1rem"></div>
+      </div>
+    </section>
+
+    <section id="mision-vision">
+      <div class="container">
+        <h2>Misión y Visión</h2>
+        <div class="card" style="padding:1rem;margin-top:1rem">
+          <h3>Misión</h3>
+          <p>Ofrecer una selección cuidada de productos usados a precios justos, extendiendo su vida útil y generando ganancias sostenibles mientras promovemos hábitos de consumo responsables para el cuidado ambiental.</p>
+          <h3>Visión</h3>
+          <p>Ser la tienda referente de economía circular en el Perú, conectando a miles de personas con artículos de segunda mano confiables y contribuyendo a reducir residuos y emisiones mediante la reutilización.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="precios">
+      <div class="container">
+        <h2>Ejemplos de precios</h2>
+        <p class="muted">Valores de referencia (puedes cambiarlos por producto):</p>
+        <div class="pricing" style="margin-top:1rem">
+          <div class="price-card"><div class="badge">Tecnología</div><p>Celular usado gama media: <strong>S/ 350 – 650</strong></p><p>Laptop básica: <strong>S/ 700 – 1200</strong></p></div>
+          <div class="price-card"><div class="badge">Hogar</div><p>Microondas: <strong>S/ 120 – 220</strong></p><p>Silla de oficina: <strong>S/ 90 – 200</strong></p></div>
+          <div class="price-card"><div class="badge">Moda</div><p>Cazadora en buen estado: <strong>S/ 60 – 150</strong></p><p>Zapatillas: <strong>S/ 80 – 220</strong></p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="carrito">
+      <div class="container">
+        <h2>Carrito</h2>
+        <div class="card" style="padding:1rem;margin-top:1rem">
+          <div id="cartItems"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;gap:1rem;flex-wrap:wrap">
+            <strong>Total: S/ <span id="cartTotal">0.00</span></strong>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="btn outline" id="clearCart">Vaciar</button>
+              <a class="btn" id="goCheckout" href="#contacto">Ir a pagar</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contacto">
+      <div class="container">
+        <h2>Solicitar compra</h2>
+        <p class="muted">Completa tus datos y te contactamos por correo o teléfono. El mensaje llega directo a nuestro email con el detalle del carrito.</p>
+        <div class="card" style="padding:1rem;margin-top:1rem">
+          <form id="buyForm" novalidate>
+            <div class="admin-grid">
+              <div>
+                <label for="buyerName">Nombre</label>
+                <input id="buyerName" name="buyerName" placeholder="Tu nombre" required />
+              </div>
+              <div>
+                <label for="buyerEmail">Email</label>
+                <input id="buyerEmail" name="buyerEmail" type="email" placeholder="tucorreo@ejemplo.com" required />
+              </div>
+              <div>
+                <label for="buyerPhone">Número de teléfono</label>
+                <input id="buyerPhone" name="buyerPhone" placeholder="9xxxxxxxx" required />
+              </div>
+              <div>
+                <label for="buyerProduct">Resumen del pedido</label>
+                <textarea id="buyerProduct" name="buyerProduct" rows="3" placeholder="Se llena automáticamente desde el carrito"></textarea>
+              </div>
+            </div>
+            <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">
+              <button class="btn" type="submit">Enviar solicitud</button>
+              <span id="buyState" aria-live="polite"></span>
+            </div>
+            <small class="muted">*Envío directo desde la página. También guardamos el registro localmente.</small>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin">
+      <div class="container">
+        <h2>Administrador</h2>
+
+        <div id="adminLogin" class="card" style="padding:1rem;margin-top:1rem">
+          <form id="loginForm" style="display:grid;gap:.75rem;grid-template-columns:1fr 1fr">
+            <div>
+              <label>Usuario</label>
+              <input id="loginUser" placeholder="Usuario" />
+            </div>
+            <div>
+              <label>Contraseña</label>
+              <input id="loginPass" type="password" placeholder="Contraseña" />
+            </div>
+            <div style="grid-column:1/-1;display:flex;gap:.5rem;align-items:center">
+              <button class="btn" type="submit">Entrar</button>
+              <span id="loginState"></span>
+            </div>
+          </form>
+        </div>
+
+        <div id="adminPanel" style="display:none">
+          <details class="settings">
+            <summary><strong>Configuración</strong></summary>
+            <div class="admin-grid" style="margin-top:1rem">
+              <div>
+                <label for="storeInput">Nombre de la tienda</label>
+                <input id="storeInput" placeholder="Una Nueva Vida" />
+              </div>
+              <div>
+                <label for="emailInput">Correo de la tienda (recepción de pedidos)</label>
+                <input id="emailInput" type="email" placeholder="renatovr25@gmail.com" />
+              </div>
+              <div>
+                <label for="logoUpload">Subir logo (PNG/JPG)</label>
+                <input id="logoUpload" type="file" accept="image/*" />
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:end">
+                <button class="btn outline" id="saveSettings">Guardar</button>
+                <span id="settingsState"></span>
+              </div>
+            </div>
+          </details>
+
+          <details class="settings" open>
+            <summary><strong>Agregar producto</strong></summary>
+            <form id="addProductForm" style="margin-top:1rem">
+              <div class="admin-grid">
+                <div>
+                  <label>Nombre</label>
+                  <input name="title" placeholder="Ej. Laptop Lenovo" required />
+                </div>
+                <div>
+                  <label>Precio (S/)</label>
+                  <input name="price" type="number" min="0" step="0.5" placeholder="Ej. 750" required />
+                </div>
+                <div>
+                  <label>Categoría</label>
+                  <input name="category" placeholder="Tecnología, Hogar, Moda..." />
+                </div>
+                <div>
+                  <label>Condición</label>
+                  <select name="condition">
+                    <option>Como nuevo</option>
+                    <option>Muy bueno</option>
+                    <option>Bueno</option>
+                  </select>
+                </div>
+                <div>
+                  <label>Stock</label>
+                  <input name="qty" type="number" min="0" step="1" value="1" />
+                </div>
+                <div>
+                  <label>Imagen</label>
+                  <input name="image" type="file" accept="image/*" />
+                </div>
+              </div>
+              <div>
+                <label>Descripción</label>
+                <textarea name="description" rows="3" placeholder="Detalles del estado, accesorios, garantía, uso..." ></textarea>
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                <button class="btn" type="submit">Agregar</button>
+                <button class="btn outline" type="button" id="exportJson">Exportar catálogo (JSON)</button>
+                <label class="btn outline" for="importJsonFile" style="cursor:pointer">Importar catálogo (JSON)</label>
+                <input id="importJsonFile" type="file" accept="application/json" style="display:none" />
+                <button class="btn outline" type="button" id="clearCatalog">Borrar catálogo</button>
+                <span id="addState"></span>
+              </div>
+            </form>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container" style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div>© <span id="year"></span> <span id="footerStore">Una Nueva Vida</span>. Hecho con economía circular ♻️.</div>
+      <div style="display:flex;gap:1rem"><a href="#">Términos</a><a href="#">Privacidad</a></div>
+    </div>
+  </footer>
+
+  <!-- ===== Modal de login al iniciar la página ===== -->
+  <div id="loginModal" class="modal">
+    <div class="modal-card">
+      <div class="pill">Administrador</div>
+      <h3>Iniciar sesión</h3>
+      <p class="muted" style="margin:.25rem 0 .75rem">Ingresa como administrador para gestionar el catálogo. También puedes continuar como visitante.</p>
+      <form id="startupLoginForm" style="display:grid;gap:.75rem;grid-template-columns:1fr 1fr">
+        <div>
+          <label for="startupUser">Usuario</label>
+          <input id="startupUser" placeholder="Usuario" />
+        </div>
+        <div>
+          <label for="startupPass">Contraseña</label>
+          <input id="startupPass" type="password" placeholder="Contraseña" />
+        </div>
+        <div style="grid-column:1/-1" class="modal-actions">
+          <button class="btn" type="submit">Entrar</button>
+          <button class="btn outline" type="button" id="continueVisitor">Continuar como visitante</button>
+          <span id="startupState"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const LS_KEYS = {settings:'unv_settings', products:'unv_products', leads:'unv_leads', cart:'unv_cart', admin:'unv_admin'};
+
+    // EmailJS init (reemplaza con tu PUBLIC KEY)
+    if (window.emailjs) emailjs.init("EY13xfxEVyIV3fRLm"); // tu Public Key de EmailJS
+
+    const $ = sel => document.querySelector(sel);
+    const escapeHtml = (s) => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+    function getJSON(key, fallback){
+      try{ return JSON.parse(localStorage.getItem(key)||'') ?? fallback }catch(e){ return fallback }
+    }
+    function setJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+    // Helper para fijar estado admin y refrescar UI
+    function setAdmin(flag){
+      setJSON(LS_KEYS.admin, !!flag);
+      updateAdminUI();
+      renderProducts();
+    }
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    document.getElementById('hamb')?.addEventListener('click', () => {
+      const nav = document.querySelector('.menu');
+      nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
+      nav.style.flexDirection = 'column'; nav.style.gap = '.5rem'; nav.style.background = '#fff';
+      nav.style.padding = '.75rem'; nav.style.border = '1px solid var(--line)'; nav.style.borderRadius = '12px'; nav.style.position = 'absolute'; nav.style.right = '4%'; nav.style.top = '60px';
+    });
+
+    // SETTINGS por defecto con tu email y logo
+    const DEFAULT_LOGO = 'https://instagram.ftru7-1.fna.fbcdn.net/v/t51.2885-19/521606521_17843217423539864_1309172480593624353_n.jpg?efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDI0LmMyIn0&_nc_ht=instagram.ftru7-1.fna.fbcdn.net&_nc_cat=108&_nc_oc=Q6cZ2QEcZxEHUTN4mNaZlrzW0MBUZOsM9fldFI1CR0LH23plyq56Tt8L-9tYCjXSChQ2B40&_nc_ohc=PUC6MhQw2BEQ7kNvwE3WGWT&_nc_gid=hsCZ5Y4ouzmaDGn2jZpe-g&edm=AP4sbd4BAAAA&ccb=7-5&oh=00_AfVC_sPPqAS2Dj-ftqB7ze7uE4dJx3Cc_1BhcYAeHnlqDA&oe=689E8870&_nc_sid=7a9f4b';
+    const settings = getJSON(LS_KEYS.settings, {storeName:'Una Nueva Vida', email:'renatovr25@gmail.com', logo: DEFAULT_LOGO});
+
+    function applySettings(){
+      document.getElementById('storeName').textContent = settings.storeName || 'Una Nueva Vida';
+      document.getElementById('footerStore').textContent = settings.storeName || 'Una Nueva Vida';
+      const logo = document.getElementById('logoImg');
+      logo.src = settings.logo || DEFAULT_LOGO;
+      logo.onerror = () => { logo.src = 'https://dummyimage.com/80x80/f6f1e6/3b2e25.png&text=UNV'; };
+      const si = document.getElementById('storeInput'); if(si) si.value = settings.storeName;
+      const ei = document.getElementById('emailInput'); if(ei) ei.value = settings.email;
+    }
+    applySettings();
+
+    document.getElementById('saveSettings')?.addEventListener('click', ()=>{
+      settings.storeName = (document.getElementById('storeInput')?.value||'').trim() || 'Una Nueva Vida';
+      settings.email = (document.getElementById('emailInput')?.value||'').trim() || 'renatovr25@gmail.com';
+      setJSON(LS_KEYS.settings, settings);
+      applySettings();
+      const st = document.getElementById('settingsState'); if(st){ st.textContent='Guardado'; setTimeout(()=> st.textContent='', 1500); }
+    });
+
+    document.getElementById('logoUpload')?.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0]; if(!file) return;
+      const data = await fileToDataURL(file);
+      settings.logo = data; setJSON(LS_KEYS.settings, settings); applySettings();
+    });
+
+    function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+
+    // RENDER PRODUCTOS
+    function renderProducts(){
+      const q = (document.getElementById('q').value||'').toLowerCase();
+      const cat = document.getElementById('filterCat').value; const cond = document.getElementById('filterCond').value;
+      const grid = document.getElementById('productGrid'); grid.innerHTML = '';
+      const cats = new Set(['']);
+      const data = getJSON(LS_KEYS.products, []);
+      data.forEach(p=> cats.add(p.category||''));
+      const catSel = document.getElementById('filterCat');
+      const prevVal = catSel.value; catSel.innerHTML = '<option value="">Todas las categorías</option>' + Array.from(cats).filter(x=>x).map(c=>`<option ${c===prevVal?'selected':''}>${c}</option>`).join('');
+
+      data
+       .filter(p => !q || (p.title?.toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q)))
+       .filter(p => !cat || p.category===cat)
+       .filter(p => !cond || p.condition===cond)
+       .forEach(p=>{
+        const card = document.createElement('article');
+        card.className = 'prod';
+        card.innerHTML = `
+          <img src="${p.image||'https://images.unsplash.com/photo-1527430253228-e93688616381?q=80&w=800&auto=format&fit=crop'}" alt="${p.title}" onerror="this.onerror=null;this.src='https://dummyimage.com/800x600/fffaf1/7a6a5f.png&text=Imagen';">
+          <h3 style="margin:.6rem 0 0">${p.title}</h3>
+          <div class="price">S/ ${Number(p.price).toFixed(2)}</div>
+          <div class="muted">${p.condition}${p.category? ' • '+p.category:''}${p.qty>0? ' • Stock: '+p.qty:' • Agotado'}</div>
+          <p style="flex:1">${p.description||''}</p>
+          <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+            <button class="btn" ${p.qty>0?'':'disabled'} data-add='${p.id}'>Agregar al carrito</button>
+            <a class="btn outline" href="#carrito" data-gocart>Comprar ahora</a>
+            <button class="btn outline" data-del='${p.id}' data-adminonly>Eliminar</button>
+          </div>`;
+        grid.appendChild(card);
+      });
+      const logged = !!getJSON(LS_KEYS.admin,false);
+      document.querySelectorAll('[data-adminonly]').forEach(el=>{ el.style.display = logged ? 'inline-flex' : 'none'; });
+    }
+
+    // Seed inicial si no hay productos
+    if(getJSON(LS_KEYS.products, []).length===0){
+      const seed=[
+        {title:'Silla de oficina ergonómica', price:160, category:'Hogar', condition:'Muy bueno', qty:1, description:'Con apoyabrazos, sin roturas.', image:''},
+        {title:'Laptop HP 14 pulgadas', price:950, category:'Tecnología', condition:'Bueno', qty:1, description:'i5 8GB RAM 256GB SSD. Detalles estéticos leves.', image:''},
+        {title:'Chaqueta denim', price:90, category:'Moda', condition:'Como nuevo', qty:2, description:'Tallas M y L.', image:''}
+      ];
+      seed.forEach((p)=>{ p.id=crypto.randomUUID(); });
+      setJSON(LS_KEYS.products, seed);
+    }
+
+    renderProducts();
+
+    // ADMIN LOGIN: alterna login/panel según estado
+    function updateAdminUI(){
+      const logged = !!getJSON(LS_KEYS.admin,false);
+      const login = document.getElementById('adminLogin');
+      const panel = document.getElementById('adminPanel');
+      if(login && panel){ login.style.display = logged? 'none':'block'; panel.style.display = logged? 'block':'none'; }
+      const logoutBtn = document.getElementById('logoutBtn');
+      if(logoutBtn) logoutBtn.style.display = logged ? 'inline-flex' : 'none';
+    }
+    updateAdminUI();
+
+    // Login desde sección Admin
+    document.getElementById('loginForm')?.addEventListener('submit',(e)=>{
+      e.preventDefault();
+      const u = document.getElementById('loginUser').value.trim();
+      const p = document.getElementById('loginPass').value.trim();
+      if(u==='root' && p==='123'){ setAdmin(true); document.getElementById('loginState').textContent='Acceso concedido'; }
+      else { document.getElementById('loginState').textContent='Credenciales inválidas'; }
+    });
+
+    // Cerrar sesión (en header)
+    document.getElementById('logoutBtn')?.addEventListener('click', ()=>{
+      setAdmin(false);
+      alert('Sesión cerrada. Ahora estás como visitante.');
+    });
+
+    // ADMIN: agregar/eliminar productos
+    document.getElementById('addProductForm')?.addEventListener('submit', async (e)=>{
+      e.preventDefault(); if(!getJSON(LS_KEYS.admin,false)) return alert('Acceso restringido');
+      const f = e.target;
+      const val = name=> f.elements[name]?.value?.trim();
+      const title = val('title');
+      const price = parseFloat(val('price')||'0');
+      const category = val('category');
+      const condition = f.elements['condition'].value;
+      const qty = parseInt(val('qty')||'0');
+      const description = f.elements['description'].value.trim();
+      let image = '';
+      const file = f.elements['image'].files?.[0];
+      if(file) image = await fileToDataURL(file);
+      const products = getJSON(LS_KEYS.products, []);
+      products.push({id:crypto.randomUUID(), title, price, category, condition, qty, description, image});
+      setJSON(LS_KEYS.products, products);
+      const as = document.getElementById('addState'); if(as){ as.textContent='Producto agregado'; setTimeout(()=> as.textContent='', 1500); }
+      f.reset(); renderProducts();
+    });
+
+    document.getElementById('productGrid').addEventListener('click', (e)=>{
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      const id = btn.getAttribute('data-add') || btn.getAttribute('data-del');
+      const products = getJSON(LS_KEYS.products, []);
+      const p = products.find(x=>x.id===id);
+      if(btn.hasAttribute('data-add')){
+        addToCart(p);
+      } else if(btn.hasAttribute('data-del')){
+        if(!getJSON(LS_KEYS.admin,false)) return alert('Solo administrador');
+        if(confirm('¿Eliminar este producto?')){
+          setJSON(LS_KEYS.products, products.filter(x=>x.id!==id)); renderProducts();
+        }
+      }
+    });
+
+    // Carrito
+    function getCart(){ return getJSON(LS_KEYS.cart, []); }
+    function setCart(c){ setJSON(LS_KEYS.cart, c); renderCart(); }
+    function addToCart(p){
+      if(!p) return;
+      const c = getCart();
+      const i = c.findIndex(x=>x.id===p.id);
+      if(i>-1){ c[i].qty = (c[i].qty||1) + 1; }
+      else{ c.push({id:p.id, title:p.title, price:p.price, qty:1}); }
+      setCart(c);
+    }
+
+    function renderCart(){
+      const c = getCart();
+      const wrap = document.getElementById('cartItems'); if(!wrap) return;
+      const count = c.reduce((n,i)=> n+(i.qty||1), 0);
+      document.getElementById('cartCount').textContent = count;
+      if(c.length===0){ wrap.innerHTML = '<p class="muted">Tu carrito está vacío.</p>'; document.getElementById('cartTotal').textContent='0.00'; return; }
+      wrap.innerHTML = '';
+      let total = 0;
+      c.forEach((item,idx)=>{
+        const lineTotal = Number(item.price)*(item.qty||1); total += lineTotal;
+        const row = document.createElement('div');
+        row.style.display='grid'; row.style.gridTemplateColumns='1fr 140px 120px 120px'; row.style.gap='0.5rem'; row.style.alignItems='center'; row.style.borderBottom='1px solid var(--line)'; row.style.padding='0.5rem 0';
+        row.innerHTML = `
+          <div><strong>${item.title}</strong></div>
+          <div>S/ ${Number(item.price).toFixed(2)}</div>
+          <div>
+            <input type="number" min="1" value="${item.qty||1}" data-qty="${idx}" style="width:80px" />
+          </div>
+          <div style="display:flex;gap:.5rem;justify-content:flex-end">
+            <span>S/ ${lineTotal.toFixed(2)}</span>
+            <button class="btn outline" data-rm="${idx}">Quitar</button>
+          </div>`;
+        wrap.appendChild(row);
+      });
+      document.getElementById('cartTotal').textContent = total.toFixed(2);
+    }
+
+    document.getElementById('cartItems')?.addEventListener('input', (e)=>{
+      const inp = e.target.closest('input[data-qty]'); if(!inp) return;
+      const idx = parseInt(inp.getAttribute('data-qty')); const c = getCart();
+      c[idx].qty = Math.max(1, parseInt(inp.value||'1')); setCart(c);
+    });
+    document.getElementById('cartItems')?.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-rm]'); if(!btn) return;
+      const idx = parseInt(btn.getAttribute('data-rm')); const c = getCart(); c.splice(idx,1); setCart(c);
+    });
+    document.getElementById('clearCart')?.addEventListener('click', ()=>{ if(confirm('¿Vaciar carrito?')){ setCart([]); }});
+
+    document.getElementById('goCheckout')?.addEventListener('click', ()=>{
+      const c = getCart();
+      if(c.length===0){ alert('Tu carrito está vacío'); return; }
+      const resumen = c.map(i=>`- ${i.title} x${i.qty||1} (S/ ${(i.price).toFixed(2)})`).join('\n');
+      document.getElementById('buyerProduct').value = `${resumen}
+TOTAL: S/ ${c.reduce((t,i)=>t+i.price*(i.qty||1),0).toFixed(2)}`;
+    });
+
+    renderCart();
+
+    // Exportar / Importar catálogo
+    document.getElementById('exportJson')?.addEventListener('click', ()=>{
+      const data = getJSON(LS_KEYS.products, []);
+      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='catalogo_unanuevavida.json'; a.click(); URL.revokeObjectURL(url);
+    });
+    document.getElementById('importJsonFile')?.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0]; if(!file) return; const text = await file.text();
+      try{ const data = JSON.parse(text); setJSON(LS_KEYS.products, data); renderProducts(); alert('Catálogo importado.'); }catch{ alert('Archivo inválido.'); }
+    });
+    document.getElementById('clearCatalog')?.addEventListener('click', ()=>{ if(confirm('¿Borrar todo el catálogo?')){ localStorage.removeItem(LS_KEYS.products); renderProducts(); }});
+
+    // ====== ENVÍO DIRECTO CON EMAILJS (sin mailto) ======
+    document.getElementById('buyForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const name = document.getElementById('buyerName').value.trim();
+      const email = document.getElementById('buyerEmail').value.trim();
+      const phone = document.getElementById('buyerPhone').value.trim();
+      const product = document.getElementById('buyerProduct').value.trim();
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const stateEl = document.getElementById('buyState');
+
+      if(!name || !emailOk || !phone){
+        stateEl.textContent='Completa correctamente los campos.';
+        stateEl.className='error';
+        return;
+      }
+
+      // Guardar lead local
+      const leads = getJSON(LS_KEYS.leads, []); 
+      leads.push({name,email,phone,product,ts:new Date().toISOString()}); 
+      setJSON(LS_KEYS.leads, leads);
+
+      // Construir resumen desde textarea o carrito
+      const cart = getCart();
+      const resumenTxt = product || (cart.length ? cart.map(i=>`- ${i.title} x${i.qty||1} (S/ ${Number(i.price).toFixed(2)})`).join('\n') : '(carrito vacío)');
+      const total = cart.reduce((t,i)=> t + Number(i.price)*(i.qty||1), 0).toFixed(2);
+
+      // Template (asunto + cuerpo HTML)
+      const subjectTxt = `Solicitud de compra – ${settings.storeName || 'Una Nueva Vida'} – ${new Date().toLocaleDateString()}`;
+      const messageHtml = `
+        <h2 style="margin:0 0 .5rem">Nueva solicitud de compra</h2>
+        <p><strong>Tienda:</strong> ${escapeHtml(settings.storeName || 'Una Nueva Vida')}</p>
+        <h3 style="margin:.75rem 0 .25rem">Carrito</h3>
+        <pre style="font-family:inherit;white-space:pre-wrap;background:#fffaf1;border:1px solid #e8decd;padding:.5rem;border-radius:8px;margin:0">${escapeHtml(resumenTxt)}</pre>
+        <p><strong>Total:</strong> S/ ${total}</p>
+        <h3 style="margin:.75rem 0 .25rem">Datos de contacto</h3>
+        <p style="margin:0 0 .25rem"><strong>Nombre:</strong> ${escapeHtml(name)}</p>
+        <p style="margin:0 0 .25rem"><strong>Email:</strong> ${escapeHtml(email)}</p>
+        <p style="margin:0 0 .25rem"><strong>Teléfono:</strong> ${escapeHtml(phone)}</p>
+        <p style="margin:.5rem 0 0;color:#7a6a5f"><small>Enviado el ${new Date().toLocaleString()}</small></p>
+      `;
+
+      try{
+        if(!window.emailjs) throw new Error('EmailJS no cargó');
+        await emailjs.send("service_h0q2ovs", "template_m0kqmlo", {
+          // Variables del template
+          to_email: settings.email || 'renatovr25@gmail.com',
+          subject: subjectTxt,
+          message_html: messageHtml,
+          // Extras por si los usas en el template
+          store_name: settings.storeName || 'Una Nueva Vida',
+          from_name: name,
+          from_email: email,
+          phone: phone,
+          product: resumenTxt,
+          total: total,
+          timestamp: new Date().toLocaleString()
+        });
+        stateEl.textContent='Solicitud enviada. Te contactaremos pronto.';
+        stateEl.className='ok';
+        e.target.reset();
+      }catch(err){
+        console.error('EmailJS error:', err);
+        stateEl.textContent='Error al enviar la solicitud automática. Verifica tus claves de EmailJS (SERVICE_ID, TEMPLATE_ID, PUBLIC_KEY).';
+        stateEl.className='error';
+      }
+    });
+
+    ['q','filterCat','filterCond'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input', renderProducts); });
+
+    // ====== Login al iniciar la página ======
+    const loginModal = document.getElementById('loginModal');
+    const startupForm = document.getElementById('startupLoginForm');
+    const startupState = document.getElementById('startupState');
+
+    // Siempre mostrar el modal en cada carga de página
+    loginModal.classList.add('open');
+
+    startupForm?.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const u = document.getElementById('startupUser').value.trim();
+      const p = document.getElementById('startupPass').value.trim();
+      if(u==='root' && p==='123'){
+        setAdmin(true);
+        startupState.textContent='Acceso concedido';
+        loginModal.classList.remove('open');
+      }else{
+        startupState.textContent='Credenciales inválidas';
+      }
+    });
+
+    document.getElementById('continueVisitor')?.addEventListener('click', ()=>{
+      setAdmin(false); // visitante
+      loginModal.classList.remove('open');
+    });
+  </script>
+</body>
+</html>
