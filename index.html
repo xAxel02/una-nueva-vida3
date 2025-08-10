@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <!-- EmailJS (envío sin backend) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
       --bg:#f6f1e6; --ink:#3b2e25; --muted:#7a6a5f; --brand:#cdb48f; --brand-dark:#9f8a6a;
@@ -346,6 +348,59 @@
     // EmailJS init (reemplaza con tu PUBLIC KEY)
     if (window.emailjs) emailjs.init("EY13xfxEVyIV3fRLm"); // tu Public Key de EmailJS
 
+    // ====== SUPABASE: CONFIG ======
+    // TODO: Reemplaza estos valores por los de tu proyecto Supabase
+    const SUPA_URL = "https://pbubxrufugrjmcmjqyrj.supabase.co";
+    const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBidWJ4cnVmdWdyam1jbWpxeXJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NDc5MjAsImV4cCI6MjA3MDQyMzkyMH0.Z5Uxpcdg2n-SzGwbnDtQ9S_AAEKcSWc37WMMdybX4zY";
+    const supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+    // Cache en memoria (y espejo en localStorage como fallback)
+    let productsCache = JSON.parse(localStorage.getItem(LS_KEYS.products) || '[]');
+
+    // ====== SUPABASE: funciones CRUD ======
+    async function dbListProducts(){
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending:false });
+      if(error) throw error;
+      return data || [];
+    }
+
+    async function dbInsertProduct(p){
+      const { data, error } = await supabase
+        .from('products')
+        .insert({
+          title: p.title,
+          price: p.price,
+          category: p.category || null,
+          condition: p.condition || null,
+          qty: p.qty ?? 0,
+          description: p.description || null,
+          image: p.image || null
+        })
+        .select()
+        .single();
+      if(error) throw error;
+      return data;
+    }
+
+    async function dbDeleteProduct(id){
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if(error) throw error;
+    }
+
+    async function refreshFromDB(){
+      try{
+        const list = await dbListProducts();
+        productsCache = list;
+        localStorage.setItem(LS_KEYS.products, JSON.stringify(list)); // espejo
+      }catch(e){
+        console.warn("No se pudo leer de Supabase, uso localStorage:", e);
+        productsCache = JSON.parse(localStorage.getItem(LS_KEYS.products) || '[]');
+      }
+    }
+
     const $ = sel => document.querySelector(sel);
     const escapeHtml = (s) => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
@@ -407,7 +462,7 @@
       const cat = document.getElementById('filterCat').value; const cond = document.getElementById('filterCond').value;
       const grid = document.getElementById('productGrid'); grid.innerHTML = '';
       const cats = new Set(['']);
-      const data = getJSON(LS_KEYS.products, []);
+      const data = (productsCache && productsCache.length) ? productsCache : getJSON(LS_KEYS.products, []);
       data.forEach(p=> cats.add(p.category||''));
       const catSel = document.getElementById('filterCat');
       const prevVal = catSel.value; catSel.innerHTML = '<option value="">Todas las categorías</option>' + Array.from(cats).filter(x=>x).map(c=>`<option ${c===prevVal?'selected':''}>${c}</option>`).join('');
@@ -423,10 +478,10 @@
           <img src="${p.image||'https://images.unsplash.com/photo-1527430253228-e93688616381?q=80&w=800&auto=format&fit=crop'}" alt="${p.title}" onerror="this.onerror=null;this.src='https://dummyimage.com/800x600/fffaf1/7a6a5f.png&text=Imagen';">
           <h3 style="margin:.6rem 0 0">${p.title}</h3>
           <div class="price">S/ ${Number(p.price).toFixed(2)}</div>
-          <div class="muted">${p.condition}${p.category? ' • '+p.category:''}${p.qty>0? ' • Stock: '+p.qty:' • Agotado'}</div>
+          <div class="muted">${p.condition||''}${p.category? ' • '+p.category:''}${Number(p.qty)>0? ' • Stock: '+p.qty:' • Agotado'}</div>
           <p style="flex:1">${p.description||''}</p>
           <div style="display:flex; gap:.5rem; flex-wrap:wrap">
-            <button class="btn" ${p.qty>0?'':'disabled'} data-add='${p.id}'>Agregar al carrito</button>
+            <button class="btn" ${Number(p.qty)>0?'':'disabled'} data-add='${p.id}'>Agregar al carrito</button>
             <a class="btn outline" href="#carrito" data-gocart>Comprar ahora</a>
             <button class="btn outline" data-del='${p.id}' data-adminonly>Eliminar</button>
           </div>`;
@@ -436,18 +491,17 @@
       document.querySelectorAll('[data-adminonly]').forEach(el=>{ el.style.display = logged ? 'inline-flex' : 'none'; });
     }
 
-    // Seed inicial si no hay productos
+    // Seed inicial si no hay productos (solo fallback local)
     if(getJSON(LS_KEYS.products, []).length===0){
       const seed=[
         {title:'Silla de oficina ergonómica', price:160, category:'Hogar', condition:'Muy bueno', qty:1, description:'Con apoyabrazos, sin roturas.', image:''},
         {title:'Laptop HP 14 pulgadas', price:950, category:'Tecnología', condition:'Bueno', qty:1, description:'i5 8GB RAM 256GB SSD. Detalles estéticos leves.', image:''},
         {title:'Chaqueta denim', price:90, category:'Moda', condition:'Como nuevo', qty:2, description:'Tallas M y L.', image:''}
       ];
+      // id local solo para fallback; en BD el id es UUID generado por Supabase
       seed.forEach((p)=>{ p.id=crypto.randomUUID(); });
       setJSON(LS_KEYS.products, seed);
     }
-
-    renderProducts();
 
     // ADMIN LOGIN: alterna login/panel según estado
     function updateAdminUI(){
@@ -458,7 +512,6 @@
       const logoutBtn = document.getElementById('logoutBtn');
       if(logoutBtn) logoutBtn.style.display = logged ? 'inline-flex' : 'none';
     }
-    updateAdminUI();
 
     // Login desde sección Admin
     document.getElementById('loginForm')?.addEventListener('submit',(e)=>{
@@ -489,25 +542,41 @@
       let image = '';
       const file = f.elements['image'].files?.[0];
       if(file) image = await fileToDataURL(file);
-      const products = getJSON(LS_KEYS.products, []);
-      products.push({id:crypto.randomUUID(), title, price, category, condition, qty, description, image});
-      setJSON(LS_KEYS.products, products);
-      const as = document.getElementById('addState'); if(as){ as.textContent='Producto agregado'; setTimeout(()=> as.textContent='', 1500); }
-      f.reset(); renderProducts();
+
+      try{
+        await dbInsertProduct({ title, price, category, condition, qty, description, image });
+        const as = document.getElementById('addState');
+        if(as){ as.textContent='Producto guardado online'; setTimeout(()=> as.textContent='', 1500); }
+        f.reset();
+        await refreshFromDB();
+        renderProducts();
+      }catch(err){
+        console.error(err);
+        alert('No se pudo guardar en la base de datos.');
+      }
     });
 
     document.getElementById('productGrid').addEventListener('click', (e)=>{
       const btn = e.target.closest('button');
       if(!btn) return;
       const id = btn.getAttribute('data-add') || btn.getAttribute('data-del');
-      const products = getJSON(LS_KEYS.products, []);
-      const p = products.find(x=>x.id===id);
+      const data = (productsCache && productsCache.length) ? productsCache : getJSON(LS_KEYS.products, []);
+      const p = data.find(x=>x.id===id);
       if(btn.hasAttribute('data-add')){
         addToCart(p);
       } else if(btn.hasAttribute('data-del')){
         if(!getJSON(LS_KEYS.admin,false)) return alert('Solo administrador');
         if(confirm('¿Eliminar este producto?')){
-          setJSON(LS_KEYS.products, products.filter(x=>x.id!==id)); renderProducts();
+          (async ()=>{
+            try{
+              await dbDeleteProduct(id);
+              await refreshFromDB();
+              renderProducts();
+            }catch(err){
+              console.error(err);
+              alert('No se pudo eliminar en la base de datos.');
+            }
+          })();
         }
       }
     });
@@ -570,19 +639,24 @@
 TOTAL: S/ ${c.reduce((t,i)=>t+i.price*(i.qty||1),0).toFixed(2)}`;
     });
 
-    renderCart();
-
-    // Exportar / Importar catálogo
+    // Exportar / Importar catálogo (opera sobre el espejo local)
     document.getElementById('exportJson')?.addEventListener('click', ()=>{
-      const data = getJSON(LS_KEYS.products, []);
+      const data = (productsCache && productsCache.length) ? productsCache : getJSON(LS_KEYS.products, []);
       const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
       const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='catalogo_unanuevavida.json'; a.click(); URL.revokeObjectURL(url);
     });
     document.getElementById('importJsonFile')?.addEventListener('change', async (e)=>{
       const file = e.target.files?.[0]; if(!file) return; const text = await file.text();
-      try{ const data = JSON.parse(text); setJSON(LS_KEYS.products, data); renderProducts(); alert('Catálogo importado.'); }catch{ alert('Archivo inválido.'); }
+      try{
+        const data = JSON.parse(text);
+        // Solo actualizar espejo local; si quieres subir en lote a BD, te doy un script aparte
+        setJSON(LS_KEYS.products, data);
+        productsCache = data;
+        renderProducts();
+        alert('Catálogo importado (local). Para subirlo a la BD, avísame y lo automatizamos.');
+      }catch{ alert('Archivo inválido.'); }
     });
-    document.getElementById('clearCatalog')?.addEventListener('click', ()=>{ if(confirm('¿Borrar todo el catálogo?')){ localStorage.removeItem(LS_KEYS.products); renderProducts(); }});
+    document.getElementById('clearCatalog')?.addEventListener('click', ()=>{ if(confirm('¿Borrar todo el catálogo local?')){ localStorage.removeItem(LS_KEYS.products); productsCache=[]; renderProducts(); }});
 
     // ====== ENVÍO DIRECTO CON EMAILJS (sin mailto) ======
     document.getElementById('buyForm').addEventListener('submit', async (e)=>{
@@ -628,11 +702,9 @@ TOTAL: S/ ${c.reduce((t,i)=>t+i.price*(i.qty||1),0).toFixed(2)}`;
       try{
         if(!window.emailjs) throw new Error('EmailJS no cargó');
         await emailjs.send("service_h0q2ovs", "template_m0kqmlo", {
-          // Variables del template
           to_email: settings.email || 'renatovr25@gmail.com',
           subject: subjectTxt,
           message_html: messageHtml,
-          // Extras por si los usas en el template
           store_name: settings.storeName || 'Una Nueva Vida',
           from_name: name,
           from_email: email,
@@ -678,6 +750,14 @@ TOTAL: S/ ${c.reduce((t,i)=>t+i.price*(i.qty||1),0).toFixed(2)}`;
       setAdmin(false); // visitante
       loginModal.classList.remove('open');
     });
+
+    // ====== INIT: sincroniza con BD y pinta todo ======
+    (async function init(){
+      await refreshFromDB();
+      renderProducts();
+      renderCart();
+      updateAdminUI();
+    })();
   </script>
 </body>
 </html>
